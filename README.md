@@ -8,7 +8,7 @@ Runs as **one container** on the official `python:3.12-slim` image — no custom
 build step, no pip packages. Only the Python standard library is used, so updating the
 container is just pulling a newer `python:3.12-slim` (Renovate config included).
 
-![screenshot placeholder](docs/screenshot.png)
+![Screenshot](docs/screenshot.png)
 
 ## Why this exists
 
