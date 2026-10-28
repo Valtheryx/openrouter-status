@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.2 – 2026-10-28
+
+### Added
+
+- The 24-hour model chart now splits every hour by model instead of showing one
+  unallocated total. OpenRouter's activity API is day-granular even with
+  `granularity=hourly` (verified: identical payload), so the hourly split uses the
+  same model mix as the current-day estimate. Segments are faded/dashed, the legend
+  names the basis day and the estimated total.
+
 ## 1.1.1 – 2026-10-28
 
 ### Added

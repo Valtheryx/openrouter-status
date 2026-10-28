@@ -139,6 +139,8 @@ const I18N = {
     hourly_note:"Last 24 hours (rolling). Hourly values are condensed from 5-minute counter samples; the model breakdown is only available per day.",
     today_hourly:"Today (hourly total; model split pending)",
     today_est:"≈ today's split is estimated from the {d} model mix",
+    hourly_est:"Hourly model split ≈ estimated from the {d} model mix (exact per-model data is day-granular)",
+    per_hour_est:"Spend per model (hourly, estimated)",
     total_per_hour:"Total per hour", loading_btn:"Loading …", live_err:"Live error", saved:"Interval saved"
   },
   de: {
@@ -161,6 +163,8 @@ const I18N = {
     hourly_note:"Letzte 24 Stunden (rollend). Stundenwerte aus 5-Min-Zählerständen verdichtet; die Modellaufteilung liefert die API nur tagesgenau.",
     today_hourly:"Heute (Stundensumme; Modellaufteilung folgt)",
     today_est:"≈ Aufteilung heute geschätzt aus dem Modellmix vom {d}",
+    hourly_est:"Stundenaufteilung je Modell ≈ geschätzt aus dem Mix vom {d} (exakte Modelldaten gibt es nur tagesgenau)",
+    per_hour_est:"Verbrauch pro Modell (stündlich, geschätzt)",
     total_per_hour:"Summe pro Stunde", loading_btn:"Lädt …", live_err:"Live-Fehler", saved:"Intervall gespeichert"
   }
 };
@@ -279,6 +283,20 @@ function renderChart(elId,legId,perDay,note){
 
 function renderHourly(elId,legId,hourly){
   const pts=hourly||[];
+  const mix=data.model_mix||{};
+  const shares=mix.shares||{};
+  const other=t('other');
+  const ranked=Object.keys(shares).sort((a,b)=>shares[b]-shares[a]);
+  const models=ranked.slice(0,6);
+  const restShare=ranked.slice(6).reduce((s,n)=>s+shares[n],0);
+  const colors={};
+  models.forEach((n,i)=>colors[n]=PALETTE[i%PALETTE.length]);
+  if(restShare>0) colors[other]=OTHER_COLOR;
+  const split=p=>{
+    const out=models.map(n=>({name:n,cost:p.cost*shares[n]})).filter(x=>x.cost>0);
+    if(restShare>0&&p.cost>0) out.push({name:other,cost:p.cost*restShare});
+    return out;
+  };
   const W=1000,H=640*zoom,PADL=96,PADR=16,PADT=40,PADB=64;
   const {yMax,ticks}=axisTicks(Math.max(...pts.map(p=>p.cost),0.0001));
   const bw=(W-PADL-PADR)/Math.max(pts.length,1);
@@ -290,16 +308,34 @@ function renderHourly(elId,legId,hourly){
   });
   pts.forEach((p,i)=>{
     const x=PADL+i*bw+2, w=Math.max(bw-4,3);
-    const h=(p.cost/yMax)*(H-PADT-PADB);
-    svg+=`<rect x="${x}" y="${Math.max(PADT,H-PADB-h)}" width="${w}" height="${Math.max(h,0.5)}" fill="#6ea8fe"><title>${p.day} ${p.hour}:00–${(parseInt(p.hour)+1)%24}:00 · $${p.cost.toFixed(2)}</title></rect>`;
+    const segments=split(p);
+    let y=H-PADB;
+    if(segments.length){
+      segments.sort((a,b)=>b.cost-a.cost).forEach(seg=>{
+        const h=(seg.cost/yMax)*(H-PADT-PADB);
+        y-=h;
+        svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[seg.name]}" fill-opacity="0.55" stroke="#0f1420" stroke-width="1" stroke-dasharray="4 3"><title>${p.day} ${p.hour}:00–${(parseInt(p.hour)+1)%24}:00 ≈ ${seg.name}: $${seg.cost.toFixed(2)}</title></rect>`;
+      });
+    } else {
+      const h=(p.cost/yMax)*(H-PADT-PADB);
+      svg+=`<rect x="${x}" y="${Math.max(PADT,H-PADB-h)}" width="${w}" height="${Math.max(h,0.5)}" fill="#6ea8fe"><title>${p.day} ${p.hour}:00–${(parseInt(p.hour)+1)%24}:00 · $${p.cost.toFixed(2)}</title></rect>`;
+    }
     svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${parseInt(p.hour)}</text>`;
   });
   svg+='</svg>';
   $(elId).innerHTML=`<div class="hscroll"><div style="min-width:820px">${svg}</div></div>`;
   const sum=pts.reduce((a,p)=>a+p.cost,0);
-  $(legId).innerHTML=pts.length
-    ? `<span class="item"><span class="dot" style="background:#6ea8fe"></span>${t('total_per_hour')} · ${fmt$(sum)}</span>`
-    : `<span class="msg">${t('hourly_empty')}</span>`;
+  if(!pts.length){ $(legId).innerHTML=`<span class="msg">${t('hourly_empty')}</span>`; return; }
+  if(models.length){
+    const perModel={};
+    pts.forEach(p=>split(p).forEach(seg=>{ perModel[seg.name]=(perModel[seg.name]||0)+seg.cost; }));
+    const shown=[...models].concat(restShare>0?[other]:[]).filter(n=>perModel[n]>0);
+    const leg=shown.map(n=>`<span class="item"><span class="dot" style="background:${colors[n]}"></span>${n} · ${fmt$(perModel[n])}</span>`).join('');
+    const note=mix.basis?t('hourly_est').replace('{d}',mix.basis.slice(8,10)+'.'+mix.basis.slice(5,7)+'.'):'';
+    $(legId).innerHTML=leg+`<span class="item msg" style="flex-basis:100%">${note} · ${t('total_per_hour')} ${fmt$(sum)}</span>`;
+  } else {
+    $(legId).innerHTML=`<span class="item"><span class="dot" style="background:#6ea8fe"></span>${t('total_per_hour')} · ${fmt$(sum)}</span>`;
+  }
 }
 
 function renderHourlyKey(elId,legId,hourly){
@@ -347,7 +383,8 @@ function renderHourlyKey(elId,legId,hourly){
 }
 
 function draw(){
-  $('title-model').textContent = perModel==='24h' ? t('per_hour') : t('per_model');
+  const hasMix=!!(data.model_mix&&Object.keys(data.model_mix.shares||{}).length);
+  $('title-model').textContent = perModel==='24h' ? (hasMix?t('per_hour_est'):t('per_hour')) : t('per_model');
   $('title-ws').textContent = perWs==='24h' ? t('per_key_hourly') : t('per_key');
   $('hourly-note').textContent = perModel==='24h' ? t('hourly_note') : '';
   if(perModel==='24h'){ renderHourly('chart-model','legend-model',data.hourly); }

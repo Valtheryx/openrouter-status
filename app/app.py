@@ -17,7 +17,7 @@ STATE_FILE = os.path.join(DATA_DIR, "state.json")
 RETENTION_DAYS = max(7, int(os.environ.get("RETENTION_DAYS", "93")))  # ~3 months
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 UI_LANG = "de" if os.environ.get("UI_LANG", "en").lower().startswith("de") else "en"
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.1.2"
 OR_BASE = "https://openrouter.ai/api/v1"
 
 _lock = threading.Lock()
@@ -300,6 +300,8 @@ def build_payload():
         "daily_workspace": hist.get("daily_workspace", {}),
         "daily_key": daily_key,
         "today": today_meta,
+        "model_mix": {"basis": today_meta["basis"],
+                      "shares": {n: round(s, 6) for n, s in shares.items()}} if shares else {},
         "hourly": hourly_today(),
         "hourly_note": "Last 24 hours (rolling), hourly values condensed from 5-minute counter samples. Model breakdown is only available per day.",
         "totals": {"model": dict(sorted(model_totals.items(), key=lambda x: -x[1])),

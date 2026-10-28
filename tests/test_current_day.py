@@ -71,6 +71,19 @@ class CurrentDayChartTests(unittest.TestCase):
         self.assertAlmostEqual(today["__today_hourly__"]["cost"], 0.3)
         self.assertFalse(payload["today"]["estimated"])
 
+    def test_exposes_model_mix_for_hourly_estimates(self):
+        payload = app.build_payload()
+        mix = payload["model_mix"]
+        self.assertEqual(mix["basis"], self.yesterday)
+        self.assertAlmostEqual(sum(mix["shares"].values()), 1.0)
+        self.assertAlmostEqual(mix["shares"]["model-x"], 0.75)
+        today = payload["daily_model"][self.today]
+        self.assertAlmostEqual(today["model-x"]["cost"], 0.3 * mix["shares"]["model-x"])
+
+    def test_hourly_chart_uses_the_mix_when_available(self):
+        html = (APP_DIR / "static" / "index.html").read_text()
+        self.assertIn("model_mix", html)
+
     def test_browser_refreshes_cached_data_so_the_bar_grows_during_the_day(self):
         html = (APP_DIR / "static" / "index.html").read_text()
         self.assertRegex(html, r"setInterval\(\(\)=>\{\s*if\(!liveBusy\) load\(\);\s*\},60000\)")
