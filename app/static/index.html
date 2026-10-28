@@ -138,6 +138,7 @@ const I18N = {
     hourly_empty:"No hourly values yet – measurement starts with the first 5-minute sample.",
     hourly_note:"Last 24 hours (rolling). Hourly values are condensed from 5-minute counter samples; the model breakdown is only available per day.",
     today_hourly:"Today (hourly total; model split pending)",
+    today_est:"≈ today's split is estimated from the {d} model mix",
     total_per_hour:"Total per hour", loading_btn:"Loading …", live_err:"Live error", saved:"Interval saved"
   },
   de: {
@@ -159,6 +160,7 @@ const I18N = {
     hourly_empty:"Noch keine Stundenwerte – die Messung beginnt mit dem ersten 5-Minuten-Sample.",
     hourly_note:"Letzte 24 Stunden (rollend). Stundenwerte aus 5-Min-Zählerständen verdichtet; die Modellaufteilung liefert die API nur tagesgenau.",
     today_hourly:"Heute (Stundensumme; Modellaufteilung folgt)",
+    today_est:"≈ Aufteilung heute geschätzt aus dem Modellmix vom {d}",
     total_per_hour:"Summe pro Stunde", loading_btn:"Lädt …", live_err:"Live-Fehler", saved:"Intervall gespeichert"
   }
 };
@@ -228,7 +230,7 @@ function axisTicks(maxV){
   return {yMax,ticks};
 }
 
-function renderChart(elId,legId,perDay){
+function renderChart(elId,legId,perDay,note){
   const days=Object.keys(perDay);
   const {collapsed,totals,top,extra}=top5PlusOther(perDay,days);
   const other=t('other');
@@ -257,7 +259,8 @@ function renderChart(elId,legId,perDay){
       y-=h;
       const label=displayLabel(n);
       const detail=n==='__today_hourly__'?'':` · ${v.tokens.toLocaleString(locale)} tokens · ${v.requests} requests`;
-      svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"><title>${d} ${label}: $${v.cost.toFixed(2)}${detail}</title></rect>`;
+      const est=v.est?' fill-opacity="0.55" stroke="#0f1420" stroke-width="1" stroke-dasharray="4 3"':(n==='__today_hourly__'?' fill-opacity="0.55"':'');
+      svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"${est}><title>${d} ${v.est?'≈ ':''}${label}: $${v.cost.toFixed(2)}${detail}</title></rect>`;
     });
     const lbl=d.slice(8,10)+'.'+d.slice(5,7);
     const stepX=Math.ceil(days.length/(W/70));
@@ -270,6 +273,7 @@ function renderChart(elId,legId,perDay){
   if(extra && extra.length){
     leg+=extra.map(e=>`<span class="item" style="opacity:.7"><span class="dot" style="background:#4a5670"></span>${displayLabel(e.name)} · ${fmt$(e.cost)} <span class="msg">${t('in_other')}</span></span>`).join('');
   }
+  if(note) leg+=`<span class="item msg" style="flex-basis:100%">${note}</span>`;
   $(legId).innerHTML=leg||`<span class="msg">${t('no_data')}</span>`;
 }
 
@@ -347,7 +351,11 @@ function draw(){
   $('title-ws').textContent = perWs==='24h' ? t('per_key_hourly') : t('per_key');
   $('hourly-note').textContent = perModel==='24h' ? t('hourly_note') : '';
   if(perModel==='24h'){ renderHourly('chart-model','legend-model',data.hourly); }
-  else { renderChart('chart-model','legend-model',pick(data.daily_model,perModel).perDay); }
+  else {
+    const tday=data.today||{};
+    const note=tday.estimated&&tday.basis?t('today_est').replace('{d}',tday.basis.slice(8,10)+'.'+tday.basis.slice(5,7)+'.'):'';
+    renderChart('chart-model','legend-model',pick(data.daily_model,perModel).perDay,note);
+  }
   if(perWs==='24h'){ renderHourlyKey('chart-ws','legend-ws',data.hourly); }
   else { renderChart('chart-ws','legend-ws',pick(data.daily_key||{},perWs).perDay); }
 }

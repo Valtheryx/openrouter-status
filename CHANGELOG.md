@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1 – 2026-10-28
+
+### Added
+
+- The current day is now split **per model** instead of showing one unallocated
+  total: the backend distributes today's sampled spend using the model mix of the
+  most recent completed days (up to 7). Estimated segments are drawn at 55 %
+  opacity with a dashed outline, and the legend states which day the mix came from.
+  Without any completed day in the history the single "hourly total" segment remains.
+
 ## 1.1.0 – 2026-10-28
 
 ### Added

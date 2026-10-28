@@ -29,8 +29,9 @@ sampling), so treat it as a convenience view, not as an additional source of tru
 - **Spend per API key** – same periods, per key across *all* workspaces; in the 24 h
   view it becomes an hourly stack per key.
 - **Current day first** – today's spend shows up as soon as the local counter samples
-  record it (labelled as an unallocated hourly total until the daily model split
-  arrives from OpenRouter) and grows with each 5-minute sample.
+  record it and grows with each 5-minute sample. Today's model split is estimated
+  from the mix of the last completed days and drawn as a faded, dashed segment
+  until OpenRouter reports the real day-level breakdown.
 - **Remaining budget per API key** – limit, used, remaining and a usage bar per key, red from
   80 %; the limit interval (weekly/monthly) comes from OpenRouter's `limit_reset`.
 - Reload (immediate fetch), Live (fetch + reload every 10 s), configurable refresh

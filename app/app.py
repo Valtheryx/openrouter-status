@@ -17,7 +17,7 @@ STATE_FILE = os.path.join(DATA_DIR, "state.json")
 RETENTION_DAYS = max(7, int(os.environ.get("RETENTION_DAYS", "93")))  # ~3 months
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 UI_LANG = "de" if os.environ.get("UI_LANG", "en").lower().startswith("de") else "en"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.1"
 OR_BASE = "https://openrouter.ai/api/v1"
 
 _lock = threading.Lock()
@@ -232,13 +232,30 @@ def build_payload():
             daily["keys"][name] += float(value or 0.0)
     daily_model = {day: dict(rows) for day, rows in hist.get("daily_model", {}).items()}
     daily_key = {day: dict(rows) for day, rows in hist.get("daily_key", {}).items()}
+    # Estimate today's model split from the most recent completed days. OpenRouter
+    # publishes the day-level model breakdown only after the day ends, but the mix
+    # is stable enough for a rough bar; the estimate is flagged for the UI.
+    basis_days = sorted((d for d in daily_model if d < today_s), reverse=True)[:7]
+    mix = defaultdict(float)
+    for day in basis_days:
+        for name, row in daily_model[day].items():
+            if name == "__today_hourly__":
+                continue
+            mix[name] += float(row.get("cost") or 0)
+    mix_total = sum(mix.values())
+    shares = {n: c / mix_total for n, c in mix.items()} if mix_total > 0 else {}
+    today_meta = {"date": today_s, "estimated": bool(shares), "basis": basis_days[0] if shares else None}
     for day, sample in hourly_days.items():
         amount = round(sample["cost"], 6)
         if amount <= 0:
             continue
         # Today is updated from the five-minute sampler; older dates only fill
         # gaps until the official daily activity row arrives.
-        if day == today_s or day not in daily_model:
+        if day == today_s and shares:
+            daily_model[day] = {n: {"cost": round(amount * s, 6), "tokens": 0,
+                                    "requests": 0, "est": True}
+                                for n, s in shares.items()}
+        elif day == today_s or day not in daily_model:
             daily_model[day] = {"__today_hourly__": {
                 "cost": amount, "tokens": 0, "requests": 0}}
         if day == today_s or day not in daily_key:
@@ -282,6 +299,7 @@ def build_payload():
         "daily_model": daily_model,
         "daily_workspace": hist.get("daily_workspace", {}),
         "daily_key": daily_key,
+        "today": today_meta,
         "hourly": hourly_today(),
         "hourly_note": "Last 24 hours (rolling), hourly values condensed from 5-minute counter samples. Model breakdown is only available per day.",
         "totals": {"model": dict(sorted(model_totals.items(), key=lambda x: -x[1])),
