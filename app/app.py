@@ -17,6 +17,7 @@ STATE_FILE = os.path.join(DATA_DIR, "state.json")
 RETENTION_DAYS = max(7, int(os.environ.get("RETENTION_DAYS", "93")))  # ~3 months
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 UI_LANG = "de" if os.environ.get("UI_LANG", "en").lower().startswith("de") else "en"
+APP_VERSION = "1.1.0"
 OR_BASE = "https://openrouter.ai/api/v1"
 
 _lock = threading.Lock()
@@ -217,20 +218,48 @@ def build_payload():
     hist = load_json(HISTORY_FILE, None)
     if not hist:
         return {"empty": True}
-    today = datetime.now(timezone(timedelta(hours=2))).date()
+    today = datetime.now(TZ).date()
+    today_s = today.isoformat()
+    # Build daily fallbacks from the compact hourly counter history. OpenRouter's
+    # activity endpoint may not publish today's row until later; use sampled totals
+    # for missing days and make today's sampled total authoritative while it grows.
+    hourly_days = defaultdict(lambda: {"cost": 0.0, "keys": defaultdict(float)})
+    for hour, bucket in _hourly.items():
+        day = hour[:10]
+        daily = hourly_days[day]
+        daily["cost"] += float(bucket.get("total") or 0.0)
+        for name, value in (bucket.get("keys") or {}).items():
+            daily["keys"][name] += float(value or 0.0)
+    daily_model = {day: dict(rows) for day, rows in hist.get("daily_model", {}).items()}
+    daily_key = {day: dict(rows) for day, rows in hist.get("daily_key", {}).items()}
+    for day, sample in hourly_days.items():
+        amount = round(sample["cost"], 6)
+        if amount <= 0:
+            continue
+        # Today is updated from the five-minute sampler; older dates only fill
+        # gaps until the official daily activity row arrives.
+        if day == today_s or day not in daily_model:
+            daily_model[day] = {"__today_hourly__": {
+                "cost": amount, "tokens": 0, "requests": 0}}
+        if day == today_s or day not in daily_key:
+            key_rows = {name: {"cost": round(value, 6), "tokens": 0, "requests": 0}
+                        for name, value in sample["keys"].items() if value > 0}
+            daily_key[day] = key_rows or {"__today_hourly__": {
+                "cost": amount, "tokens": 0, "requests": 0}}
     months = []
     d = today.replace(day=1)
     for _ in range(3):
         months.append(d.strftime("%Y-%m"))
         d = (d - timedelta(days=1)).replace(day=1)
     months.reverse()
-    earliest = min(hist["daily_model"].keys()) if hist["daily_model"] else None
+    earliest = min(daily_model.keys()) if daily_model else None
     monthly = []
     for m in months:
-        cost = sum(v["cost"] for day, models in hist["daily_model"].items()
+        cost = sum(v["cost"] for day, models in daily_model.items()
                    if day.startswith(m) for v in models.values())
         partial = bool(earliest and earliest.startswith(m) and earliest > m + "-01")
         monthly.append({"month": m, "cost": round(cost, 4), "partial": partial})
+
     model_totals = defaultdict(float)
     ws_totals = defaultdict(float)
     key_totals = defaultdict(float)
@@ -250,9 +279,9 @@ def build_payload():
         "keys": hist.get("keys", []),
         "workspaces": hist.get("workspaces", []),
         "monthly": monthly,
-        "daily_model": hist["daily_model"],
+        "daily_model": daily_model,
         "daily_workspace": hist.get("daily_workspace", {}),
-        "daily_key": hist.get("daily_key", {}),
+        "daily_key": daily_key,
         "hourly": hourly_today(),
         "hourly_note": "Last 24 hours (rolling), hourly values condensed from 5-minute counter samples. Model breakdown is only available per day.",
         "totals": {"model": dict(sorted(model_totals.items(), key=lambda x: -x[1])),
@@ -329,7 +358,7 @@ class Handler(BaseHTTPRequestHandler):
         elif p == "/api/health":
             self._send(200, {"status": "ok"})
         elif p == "/api/config":
-            self._send(200, {"refresh_minutes": get_interval()})
+            self._send(200, {"refresh_minutes": get_interval(), "version": APP_VERSION})
         else:
             self._send(404, {"error": "not found"})
 

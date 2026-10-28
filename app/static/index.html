@@ -131,12 +131,13 @@ const I18N = {
     no_data:"No data in the selected period",
     loading:"Loading data …", no_data_yet:"No data yet – press Reload to fetch once.",
     updated:"Last updated", models:"models", workspaces:"workspaces", keys:"keys",
-    monthly_note:"Note: the OpenRouter API only returns ~30 days of activity. Older months fill up over time from the local history.",
+    monthly_note:"Note: OpenRouter returns ~30 days of activity. The current day uses provisional hourly counter totals and can grow; model-level detail arrives with the daily activity data.",
     keys_note:"Limit and remaining are per billing period (weekly/monthly), not per month. Red from 80 % usage.",
     last_ok:"Last successful fetch", last_err:"Error on last fetch",
     hourly_sum:"today", hourly_src:"hourly values from 5-minute counters",
     hourly_empty:"No hourly values yet – measurement starts with the first 5-minute sample.",
     hourly_note:"Last 24 hours (rolling). Hourly values are condensed from 5-minute counter samples; the model breakdown is only available per day.",
+    today_hourly:"Today (hourly total; model split pending)",
     total_per_hour:"Total per hour", loading_btn:"Loading …", live_err:"Live error", saved:"Interval saved"
   },
   de: {
@@ -151,16 +152,18 @@ const I18N = {
     no_data:"Keine Daten im gewählten Zeitraum",
     loading:"Lade Daten …", no_data_yet:"Noch keine Daten – klicke Reload für den ersten Abruf.",
     updated:"Zuletzt aktualisiert", models:"Modelle", workspaces:"Workspaces", keys:"Keys",
-    monthly_note:"Hinweis: Die OpenRouter-API liefert Verbrauchsdaten nur ~30 Tage zurück. Ältere Monate füllen sich mit der Zeit aus dem lokalen Verlauf.",
+    monthly_note:"Hinweis: OpenRouter liefert etwa 30 Tage Aktivitätsdaten. Der heutige Tag basiert vorläufig auf Stunden-Zählerständen und wächst mit; die Modellaufteilung folgt mit den Tagesdaten.",
     keys_note:"Limit und Rest gelten je Abrechnungszeitraum (Woche/Monat), nicht pro Monat. Ab 80 % Auslastung rot markiert.",
     last_ok:"Letzter erfolgreicher Abruf", last_err:"Fehler beim letzten Abruf",
     hourly_sum:"Summe heute", hourly_src:"Stundenwerte aus 5-Min-Zählerständen",
     hourly_empty:"Noch keine Stundenwerte – die Messung beginnt mit dem ersten 5-Minuten-Sample.",
-    hourly_note:"Letzte 24 Stunden (rollend). Stundenwerte aus 5-Minuten-Zählerständen verdichtet; die Modellaufteilung liefert die API nur tagesgenau.",
-    total_per_hour:"Gesamt pro Stunde", loading_btn:"Lädt …", live_err:"Live-Fehler", saved:"Intervall gespeichert"
+    hourly_note:"Letzte 24 Stunden (rollend). Stundenwerte aus 5-Min-Zählerständen verdichtet; die Modellaufteilung liefert die API nur tagesgenau.",
+    today_hourly:"Heute (Stundensumme; Modellaufteilung folgt)",
+    total_per_hour:"Summe pro Stunde", loading_btn:"Lädt …", live_err:"Live-Fehler", saved:"Intervall gespeichert"
   }
 };
 const t = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+const displayLabel = name => name === '__today_hourly__' ? t('today_hourly') : name;
 const locale = LANG === 'de' ? 'de-DE' : 'en-GB';
 
 let data=null, live=null, liveBusy=false, perModel='30d', perWs='30d';
@@ -232,7 +235,7 @@ function renderChart(elId,legId,perDay){
   const names=[...top];
   if(days.some(d=>collapsed[d]&&collapsed[d][other])) names.push(other);
   const colors={};
-  names.forEach((n,i)=>colors[n]=n===other?OTHER_COLOR:PALETTE[i%PALETTE.length]);
+  names.forEach((n,i)=>colors[n]=n==='__today_hourly__'?'#6ea8fe':(n===other?OTHER_COLOR:PALETTE[i%PALETTE.length]));
   const periodTotals={};
   days.forEach(d=>Object.entries(collapsed[d]).forEach(([n,v])=>{ periodTotals[n]=(periodTotals[n]||0)+v.cost; }));
   const W=1000,H=Math.max(440,days.length===1?520:640)*zoom,PADL=96,PADR=16,PADT=40,PADB=64;
@@ -252,18 +255,20 @@ function renderChart(elId,legId,perDay){
     entries.forEach(([n,v])=>{
       const h=(v.cost/yMax)*(H-PADT-PADB);
       y-=h;
-      svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"><title>${d} ${n}: $${v.cost.toFixed(2)} · ${v.tokens.toLocaleString(locale)} tokens · ${v.requests} requests</title></rect>`;
+      const label=displayLabel(n);
+      const detail=n==='__today_hourly__'?'':` · ${v.tokens.toLocaleString(locale)} tokens · ${v.requests} requests`;
+      svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"><title>${d} ${label}: $${v.cost.toFixed(2)}${detail}</title></rect>`;
     });
     const lbl=d.slice(8,10)+'.'+d.slice(5,7);
     const stepX=Math.ceil(days.length/(W/70));
-    if(i%stepX===0) svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${lbl}</text>`;
+    if(i%stepX===0 || i===days.length-1) svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${lbl}</text>`;
   });
   svg+='</svg>';
   $(elId).innerHTML=svg;
   const legendNames=names.filter(n=>(periodTotals[n]||0)>0);
-  let leg=legendNames.map(n=>`<span class="item"><span class="dot" style="background:${colors[n]}"></span>${n} · ${fmt$(periodTotals[n])}</span>`).join('');
+  let leg=legendNames.map(n=>`<span class="item"><span class="dot" style="background:${colors[n]}"></span>${displayLabel(n)} · ${fmt$(periodTotals[n])}</span>`).join('');
   if(extra && extra.length){
-    leg+=extra.map(e=>`<span class="item" style="opacity:.7"><span class="dot" style="background:#4a5670"></span>${e.name} · ${fmt$(e.cost)} <span class="msg">${t('in_other')}</span></span>`).join('');
+    leg+=extra.map(e=>`<span class="item" style="opacity:.7"><span class="dot" style="background:#4a5670"></span>${displayLabel(e.name)} · ${fmt$(e.cost)} <span class="msg">${t('in_other')}</span></span>`).join('');
   }
   $(legId).innerHTML=leg||`<span class="msg">${t('no_data')}</span>`;
 }
@@ -397,6 +402,7 @@ function render(){
 }
 
 async function load(){ try{ const r=await fetch('/api/data',{cache:'no-store'}); data=await r.json(); render(); }catch(e){ $('sub').textContent='Error: '+e; } }
+setInterval(()=>{ if(!liveBusy) load(); },60000);
 
 async function liveCycle(){
   if(liveBusy) return;

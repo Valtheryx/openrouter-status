@@ -28,6 +28,9 @@ sampling), so treat it as a convenience view, not as an additional source of tru
   bucket; the legend lists up to 10 models.
 - **Spend per API key** – same periods, per key across *all* workspaces; in the 24 h
   view it becomes an hourly stack per key.
+- **Current day first** – today's spend shows up as soon as the local counter samples
+  record it (labelled as an unallocated hourly total until the daily model split
+  arrives from OpenRouter) and grows with each 5-minute sample.
 - **Remaining budget per API key** – limit, used, remaining and a usage bar per key, red from
   80 %; the limit interval (weekly/monthly) comes from OpenRouter's `limit_reset`.
 - Reload (immediate fetch), Live (fetch + reload every 10 s), configurable refresh
