@@ -10,16 +10,25 @@ container is just pulling a newer `python:3.12-slim` (Renovate config included).
 
 ![screenshot placeholder](docs/screenshot.png)
 
+## Why this exists
+
+I built this purely because I like this condensed overview better than clicking through
+several pages. **Everything it shows is also available in the OpenRouter dashboard** —
+credits and usage under *Settings → Credits*, the activity breakdown under *Activity*, and
+per-key limits under *Settings → API Keys*. This project is just a single page that puts
+those numbers side by side (plus per-key remaining budget and hourly bars from local
+sampling), so treat it as a convenience view, not as an additional source of truth.
+
 ## What it shows
 
 - **Top row** – available credits, total spend, credits added, plus the cost of the last
   three calendar months (side by side).
-- **Verbrauch pro Modell** – stacked bars over the last 30 days / 7 days / 24 hours.
-  Max 6 colours per bar: top 5 by cost in the selected period plus a grey "Sonstige"
+- **Spend per model** – stacked bars over the last 30 days / 7 days / 24 hours.
+  Max 6 colours per bar: top 5 by cost in the selected period plus a grey "Other"
   bucket; the legend lists up to 10 models.
-- **Verbrauch pro API-Key** – same periods, per key across *all* workspaces; in the 24 h
+- **Spend per API key** – same periods, per key across *all* workspaces; in the 24 h
   view it becomes an hourly stack per key.
-- **Restbudget pro API-Key** – limit, used, remaining and a usage bar per key, red from
+- **Remaining budget per API key** – limit, used, remaining and a usage bar per key, red from
   80 %; the limit interval (weekly/monthly) comes from OpenRouter's `limit_reset`.
 - Reload (immediate fetch), Live (fetch + reload every 10 s), configurable refresh
   interval and S/M/L chart zoom.
@@ -84,6 +93,7 @@ volumes:
 | `RETENTION_DAYS` | `93` | retention for hourly + daily data |
 | `TZ` | `Europe/Berlin` | timezone for day/hour buckets and labels |
 | `PORT` | `8000` | listen port inside the container |
+| `UI_LANG` | `en` | UI language (`en` or `de`; repo default is English) |
 
 ## Endpoints
 

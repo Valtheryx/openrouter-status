@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OpenRouter Status</title>
+<!--UI_LANG-->
 <style>
   :root{
     --bg:#0f1420; --card:#171e2e; --border:#263049; --fg:#e7ecf5; --muted:#8fa0bd;
@@ -36,6 +37,7 @@
   .dot{width:11px;height:11px;border-radius:3px;flex:none}
   .chart{width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
   .msg{color:var(--muted);font-size:.85rem}
+  .err{color:#ff8080}
   .muted{color:var(--muted)}
   .tablewrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
   table.keys{width:100%;border-collapse:collapse;font-size:.8rem}
@@ -53,27 +55,26 @@
   .ubar span{font-variant-numeric:tabular-nums;font-size:.74rem;min-width:38px;text-align:right}
   .pill{font-size:.66rem;border-radius:5px;padding:1px 6px;background:#243450;color:var(--muted)}
   .pill.off{background:#4a2029;color:#ff9c9c}
-  .err{color:#ff8080}
   @media (max-width:700px){ .kpi{padding:6px 8px} .kpi .v{font-size:.98rem} .kpi .l{font-size:.58rem} .badge{display:none} }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>OpenRouter Status</h1>
-  <div class="sub" id="sub">Lade Daten …</div>
+  <div class="sub" id="sub"></div>
 
   <div class="kpis" id="kpis">
-    <div class="kpi"><div class="l">Verfügbare Credits</div><div class="v" id="kpi-credits">–</div></div>
-    <div class="kpi"><div class="l">Gesamt verbraucht</div><div class="v" id="kpi-used">–</div></div>
-    <div class="kpi"><div class="l">Credits gesamt (aufgeladen)</div><div class="v" id="kpi-total">–</div></div>
+    <div class="kpi"><div class="l" data-i18n="credits_available">Available credits</div><div class="v" id="kpi-credits">–</div></div>
+    <div class="kpi"><div class="l" data-i18n="spent_total">Total spent</div><div class="v" id="kpi-used">–</div></div>
+    <div class="kpi"><div class="l" data-i18n="credits_added">Credits added</div><div class="v" id="kpi-total">–</div></div>
     <div class="months" id="months"></div>
   </div>
   <div class="msg" id="monthly-note" style="margin:6px 2px 0"></div>
 
   <div class="card">
     <div class="toolbar">
-      <div class="title" id="title-model">Verbrauch pro Modell</div>
-      <div class="seg" id="seg-model"><button data-p="30d" class="on">Letzte 30 Tage</button><button data-p="7d">Letzte 7 Tage</button><button data-p="24h">Letzte 24h</button></div>
+      <div class="title" id="title-model" data-i18n="per_model">Spend per model</div>
+      <div class="seg" id="seg-model"><button data-p="30d" class="on">30d</button><button data-p="7d">7d</button><button data-p="24h">24h</button></div>
     </div>
     <div class="chart" id="chart-model"></div>
     <div class="legend" id="legend-model"></div>
@@ -81,8 +82,8 @@
 
   <div class="card" id="card-ws">
     <div class="toolbar">
-      <div class="title" id="title-ws">Verbrauch pro API-Key (alle Workspaces)</div>
-      <div class="seg" id="seg-ws"><button data-p="30d" class="on">Letzte 30 Tage</button><button data-p="7d">Letzte 7 Tage</button><button data-p="24h">Letzte 24h</button></div>
+      <div class="title" id="title-ws" data-i18n="per_key">Spend per API key (all workspaces)</div>
+      <div class="seg" id="seg-ws"><button data-p="30d" class="on">30d</button><button data-p="7d">7d</button><button data-p="24h">24h</button></div>
     </div>
     <div class="chart" id="chart-ws"></div>
     <div class="legend" id="legend-ws"></div>
@@ -90,10 +91,10 @@
   <div class="msg" id="hourly-note" style="margin:2px 2px 0"></div>
 
   <div class="card">
-    <div class="toolbar"><div class="title">Restbudget pro API-Key</div><span class="msg" id="keys-count"></span></div>
+    <div class="toolbar"><div class="title" data-i18n="budget">Remaining budget per API key</div><span class="msg" id="keys-count"></span></div>
     <div class="tablewrap">
       <table class="keys" id="keys-table"><thead><tr>
-        <th>Key</th><th class="num">Limit / Zeitraum</th><th class="num">Genutzt</th><th class="num">Rest</th><th>Auslastung</th><th>Status</th>
+        <th data-i18n="th_key">Key</th><th class="num" data-i18n="th_limit">Limit / period</th><th class="num" data-i18n="th_used">Used</th><th class="num" data-i18n="th_remaining">Remaining</th><th data-i18n="th_usage">Usage</th><th data-i18n="th_status">Status</th>
       </tr></thead><tbody></tbody></table>
     </div>
     <div class="msg" id="keys-note" style="margin-top:6px"></div>
@@ -101,14 +102,14 @@
 
   <div class="card">
     <div class="toolbar">
-      <div class="title">Einstellungen</div>
-      <label class="msg">Zoom:
+      <div class="title" data-i18n="settings">Settings</div>
+      <label class="msg"><span data-i18n="zoom">Zoom</span>
         <span class="seg" id="seg-zoom"><button data-z="S">S</button><button data-z="M" class="on">M</button><button data-z="L">L</button></span>
       </label>
-      <label class="msg">Aktualisierungsintervall (Minuten):
+      <label class="msg"><span data-i18n="interval">Refresh interval (minutes)</span>
         <input type="number" id="interval" min="1" max="1440">
       </label>
-      <button class="act ghost" id="save-interval">Speichern</button>
+      <button class="act ghost" id="save-interval" data-i18n="save">Save</button>
       <button class="act ghost" id="live">Live</button>
       <button class="act" id="reload">Reload</button>
     </div>
@@ -116,6 +117,52 @@
   </div>
 </div>
 <script>
+const LANG = (window.__UI_LANG__ === 'de') ? 'de' : 'en';
+const I18N = {
+  en: {
+    credits_available:"Available credits", spent_total:"Total spent", credits_added:"Credits added",
+    per_model:"Spend per model", per_key:"Spend per API key (all workspaces)",
+    per_key_hourly:"Spend per API key (hourly)", per_hour:"Spend per hour (total)",
+    budget:"Remaining budget per API key", settings:"Settings", zoom:"Zoom",
+    interval:"Refresh interval (minutes)", save:"Save", th_key:"Key", th_limit:"Limit / period",
+    th_used:"Used", th_remaining:"Remaining", th_usage:"Usage", th_status:"Status",
+    partial:"partially captured", other:"Other", in_other:"(in Other)",
+    no_limit:"no limit", active:"active", disabled:"disabled", week:"week", month:"month", day:"day",
+    no_data:"No data in the selected period",
+    loading:"Loading data …", no_data_yet:"No data yet – press Reload to fetch once.",
+    updated:"Last updated", models:"models", workspaces:"workspaces", keys:"keys",
+    monthly_note:"Note: the OpenRouter API only returns ~30 days of activity. Older months fill up over time from the local history.",
+    keys_note:"Limit and remaining are per billing period (weekly/monthly), not per month. Red from 80 % usage.",
+    last_ok:"Last successful fetch", last_err:"Error on last fetch",
+    hourly_sum:"today", hourly_src:"hourly values from 5-minute counters",
+    hourly_empty:"No hourly values yet – measurement starts with the first 5-minute sample.",
+    hourly_note:"Last 24 hours (rolling). Hourly values are condensed from 5-minute counter samples; the model breakdown is only available per day.",
+    total_per_hour:"Total per hour", loading_btn:"Loading …", live_err:"Live error", saved:"Interval saved"
+  },
+  de: {
+    credits_available:"Verfügbare Credits", spent_total:"Gesamt verbraucht", credits_added:"Credits gesamt (aufgeladen)",
+    per_model:"Verbrauch pro Modell", per_key:"Verbrauch pro API-Key (alle Workspaces)",
+    per_key_hourly:"Verbrauch pro API-Key (stündlich)", per_hour:"Verbrauch pro Stunde (gesamt)",
+    budget:"Restbudget pro API-Key", settings:"Einstellungen", zoom:"Zoom",
+    interval:"Aktualisierungsintervall (Minuten)", save:"Speichern", th_key:"Key", th_limit:"Limit / Zeitraum",
+    th_used:"Genutzt", th_remaining:"Rest", th_usage:"Auslastung", th_status:"Status",
+    partial:"teilweise erfasst", other:"Sonstige", in_other:"(in Sonstige)",
+    no_limit:"kein Limit", active:"aktiv", disabled:"deaktiviert", week:"Woche", month:"Monat", day:"Tag",
+    no_data:"Keine Daten im gewählten Zeitraum",
+    loading:"Lade Daten …", no_data_yet:"Noch keine Daten – klicke Reload für den ersten Abruf.",
+    updated:"Zuletzt aktualisiert", models:"Modelle", workspaces:"Workspaces", keys:"Keys",
+    monthly_note:"Hinweis: Die OpenRouter-API liefert Verbrauchsdaten nur ~30 Tage zurück. Ältere Monate füllen sich mit der Zeit aus dem lokalen Verlauf.",
+    keys_note:"Limit und Rest gelten je Abrechnungszeitraum (Woche/Monat), nicht pro Monat. Ab 80 % Auslastung rot markiert.",
+    last_ok:"Letzter erfolgreicher Abruf", last_err:"Fehler beim letzten Abruf",
+    hourly_sum:"Summe heute", hourly_src:"Stundenwerte aus 5-Min-Zählerständen",
+    hourly_empty:"Noch keine Stundenwerte – die Messung beginnt mit dem ersten 5-Minuten-Sample.",
+    hourly_note:"Letzte 24 Stunden (rollend). Stundenwerte aus 5-Minuten-Zählerständen verdichtet; die Modellaufteilung liefert die API nur tagesgenau.",
+    total_per_hour:"Gesamt pro Stunde", loading_btn:"Lädt …", live_err:"Live-Fehler", saved:"Intervall gespeichert"
+  }
+};
+const t = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+const locale = LANG === 'de' ? 'de-DE' : 'en-GB';
+
 let data=null, live=null, liveBusy=false, perModel='30d', perWs='30d';
 const ZOOMS={S:0.7,M:1,L:1.4};
 let zoomName=localStorage.getItem('or_zoom')||'M';
@@ -125,6 +172,11 @@ const $=id=>document.getElementById(id);
 const fmt$=v=>'$'+Number(v).toFixed(2);
 const PALETTE=['#6ea8fe','#7ee0a3','#ffb86b','#ff7d9c','#b48cff'];
 const OTHER_COLOR='#9aa8c7';
+
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=t(el.dataset.i18n); });
+  document.documentElement.lang = LANG;
+}
 
 function pick(entry, days){
   const out={};
@@ -148,45 +200,44 @@ function pick(entry, days){
 
 function top5PlusOther(perDay, days){
   const totals={};
-  days.forEach(d=>{
-    Object.entries(perDay[d]).forEach(([n,v])=>{ totals[n]=(totals[n]||0)+v.cost; });
-  });
+  days.forEach(d=>{ Object.entries(perDay[d]).forEach(([n,v])=>{ totals[n]=(totals[n]||0)+v.cost; }); });
   const sorted=Object.entries(totals).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]);
   const top=sorted.slice(0,5).map(([n])=>n);
   const rest=sorted.slice(5).map(([n])=>n);
+  const other=t('other');
   const collapsed={};
   days.forEach(d=>{
     const src=perDay[d], agg={cost:0,tokens:0,requests:0};
     rest.forEach(n=>{ const v=src[n]; if(v){ agg.cost+=v.cost; agg.tokens+=v.tokens; agg.requests+=v.requests; } });
     const out={};
     top.forEach(n=>{ if(src[n]) out[n]=src[n]; });
-    if(agg.cost>0) out['Sonstige']={cost:agg.cost,tokens:agg.tokens,requests:agg.requests};
+    if(agg.cost>0) out[other]={cost:agg.cost,tokens:agg.tokens,requests:agg.requests};
     collapsed[d]=out;
   });
   const extra=sorted.slice(5,10).map(([n,c])=>({name:n,cost:c}));
   return {collapsed, totals, top, extra};
 }
 
-function niceStep(max, ticks){
-  const cands=[1,2,5,10,20,25,50,100,200,250,500,1000,2000,2500,5000];
-  for(const c of cands){ if(c*ticks>=max) return c; }
-  return Math.ceil(max/ticks);
+function axisTicks(maxV){
+  const yMax=Math.max(1,Math.ceil(maxV));
+  const step=Math.max(1,Math.ceil(yMax/6));
+  const ticks=[]; for(let v=0;v<yMax;v+=step) ticks.push(v); ticks.push(yMax);
+  return {yMax,ticks};
 }
 
 function renderChart(elId,legId,perDay){
   const days=Object.keys(perDay);
   const {collapsed,totals,top,extra}=top5PlusOther(perDay,days);
+  const other=t('other');
   const names=[...top];
-  if(days.some(d=>collapsed[d]&&collapsed[d]['Sonstige'])) names.push('Sonstige');
+  if(days.some(d=>collapsed[d]&&collapsed[d][other])) names.push(other);
   const colors={};
-  names.forEach((n,i)=>colors[n]=n==='Sonstige'?OTHER_COLOR:PALETTE[i%PALETTE.length]);
+  names.forEach((n,i)=>colors[n]=n===other?OTHER_COLOR:PALETTE[i%PALETTE.length]);
   const periodTotals={};
   days.forEach(d=>Object.entries(collapsed[d]).forEach(([n,v])=>{ periodTotals[n]=(periodTotals[n]||0)+v.cost; }));
   const W=1000,H=Math.max(440,days.length===1?520:640)*zoom,PADL=96,PADR=16,PADT=40,PADB=64;
   const maxDay=Math.max(...days.map(d=>Object.values(collapsed[d]).reduce((s,v)=>s+v.cost,0)),0.0001);
-  const yMax=Math.max(1,Math.ceil(maxDay));               // naechster voller Dollar
-  const step=Math.max(1,Math.ceil(yMax/6));               // ganzzahlige Stufen, ~6 Linien
-  const ticks=[]; for(let v=0;v<yMax;v+=step) ticks.push(v); ticks.push(yMax);
+  const {yMax,ticks}=axisTicks(maxDay);
   const bw=(W-PADL-PADR)/Math.max(days.length,1);
   let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">`;
   ticks.forEach(v=>{
@@ -197,12 +248,11 @@ function renderChart(elId,legId,perDay){
   days.forEach((d,i)=>{
     const x=PADL+i*bw+2, w=Math.max(bw-4,3);
     let y=H-PADB;
-    const entries=Object.entries(collapsed[d]).filter(([,v])=>v.cost>0)
-      .sort((a,b)=>(totals[b[0]]||0)-(totals[a[0]]||0));
+    const entries=Object.entries(collapsed[d]).filter(([,v])=>v.cost>0).sort((a,b)=>(totals[b[0]]||0)-(totals[a[0]]||0));
     entries.forEach(([n,v])=>{
       const h=(v.cost/yMax)*(H-PADT-PADB);
       y-=h;
-      svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"><title>${d} ${n}: $${v.cost.toFixed(2)} · ${v.tokens.toLocaleString('de-DE')} Tokens · ${v.requests} Requests</title></rect>`;
+      svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"><title>${d} ${n}: $${v.cost.toFixed(2)} · ${v.tokens.toLocaleString(locale)} tokens · ${v.requests} requests</title></rect>`;
     });
     const lbl=d.slice(8,10)+'.'+d.slice(5,7);
     const stepX=Math.ceil(days.length/(W/70));
@@ -211,21 +261,17 @@ function renderChart(elId,legId,perDay){
   svg+='</svg>';
   $(elId).innerHTML=svg;
   const legendNames=names.filter(n=>(periodTotals[n]||0)>0);
-  let leg=legendNames.map(n=>
-    `<span class="item"><span class="dot" style="background:${colors[n]}"></span>${n} · ${fmt$(periodTotals[n])}</span>`).join('');
+  let leg=legendNames.map(n=>`<span class="item"><span class="dot" style="background:${colors[n]}"></span>${n} · ${fmt$(periodTotals[n])}</span>`).join('');
   if(extra && extra.length){
-    leg+=extra.map(e=>`<span class="item" style="opacity:.7"><span class="dot" style="background:#4a5670"></span>${e.name} · ${fmt$(e.cost)} <span class="msg">(in Sonstige)</span></span>`).join('');
+    leg+=extra.map(e=>`<span class="item" style="opacity:.7"><span class="dot" style="background:#4a5670"></span>${e.name} · ${fmt$(e.cost)} <span class="msg">${t('in_other')}</span></span>`).join('');
   }
-  $(legId).innerHTML=leg||'<span class="msg">Keine Daten im gewählten Zeitraum</span>';
+  $(legId).innerHTML=leg||`<span class="msg">${t('no_data')}</span>`;
 }
 
 function renderHourly(elId,legId,hourly){
   const pts=hourly||[];
   const W=1000,H=640*zoom,PADL=96,PADR=16,PADT=40,PADB=64;
-  const maxV=Math.max(...pts.map(p=>p.cost),0.0001);
-  const yMax=Math.max(1,Math.ceil(maxV));
-  const step=Math.max(1,Math.ceil(yMax/6));
-  const ticks=[]; for(let v=0;v<yMax;v+=step) ticks.push(v); ticks.push(yMax);
+  const {yMax,ticks}=axisTicks(Math.max(...pts.map(p=>p.cost),0.0001));
   const bw=(W-PADL-PADR)/Math.max(pts.length,1);
   let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">`;
   ticks.forEach(v=>{
@@ -237,14 +283,14 @@ function renderHourly(elId,legId,hourly){
     const x=PADL+i*bw+2, w=Math.max(bw-4,3);
     const h=(p.cost/yMax)*(H-PADT-PADB);
     svg+=`<rect x="${x}" y="${Math.max(PADT,H-PADB-h)}" width="${w}" height="${Math.max(h,0.5)}" fill="#6ea8fe"><title>${p.day} ${p.hour}:00–${(parseInt(p.hour)+1)%24}:00 · $${p.cost.toFixed(2)}</title></rect>`;
-    svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${String(parseInt(p.hour))}</text>`;
+    svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${parseInt(p.hour)}</text>`;
   });
   svg+='</svg>';
   $(elId).innerHTML=`<div class="hscroll"><div style="min-width:820px">${svg}</div></div>`;
   const sum=pts.reduce((a,p)=>a+p.cost,0);
   $(legId).innerHTML=pts.length
-    ? `<span class="item"><span class="dot" style="background:#6ea8fe"></span>Gesamt pro Stunde · ${fmt$(sum)}</span>`
-    : '<span class="msg">Noch keine Stundenwerte – die Messung beginnt mit dem ersten 5-Minuten-Snapshot. Die Werte füllen sich ab jetzt stündlich.</span>';
+    ? `<span class="item"><span class="dot" style="background:#6ea8fe"></span>${t('total_per_hour')} · ${fmt$(sum)}</span>`
+    : `<span class="msg">${t('hourly_empty')}</span>`;
 }
 
 function renderHourlyKey(elId,legId,hourly){
@@ -252,20 +298,18 @@ function renderHourlyKey(elId,legId,hourly){
   const totals={};
   pts.forEach(p=>Object.entries(p.keys||{}).forEach(([n,c])=>{ totals[n]=(totals[n]||0)+c; }));
   const sorted=Object.entries(totals).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]);
-  const top=sorted.slice(0,5).map(([n])=>n), rest=sorted.slice(5).map(([n])=>n);
-  const names=[...top]; if(sorted.length>5) names.push('Sonstige');
-  const colors={}; names.forEach((n,i)=>colors[n]=n==='Sonstige'?OTHER_COLOR:PALETTE[i%PALETTE.length]);
+  const top=sorted.slice(0,5).map(([n])=>n);
+  const other=t('other');
+  const names=[...top]; if(sorted.length>5) names.push(other);
+  const colors={}; names.forEach((n,i)=>colors[n]=n===other?OTHER_COLOR:PALETTE[i%PALETTE.length]);
   const rows=pts.map(p=>{
-    const out={}; let other=0;
-    Object.entries(p.keys||{}).forEach(([n,c])=>{
-      if(top.includes(n)) out[n]=(out[n]||0)+c; else other+=c;
-    });
-    if(other>0) out['Sonstige']=other;
+    const out={}; let rest=0;
+    Object.entries(p.keys||{}).forEach(([n,c])=>{ if(top.includes(n)) out[n]=(out[n]||0)+c; else rest+=c; });
+    if(rest>0) out[other]=rest;
     return out;
   });
   const maxV=Math.max(...pts.map((p,i)=>Object.values(rows[i]).reduce((a,b)=>a+b,0)),0.0001);
-  const yMax=Math.max(1,Math.ceil(maxV)), step=Math.max(1,Math.ceil(yMax/6));
-  const ticks=[]; for(let v=0;v<yMax;v+=step) ticks.push(v); ticks.push(yMax);
+  const {yMax,ticks}=axisTicks(maxV);
   const W=1000,H=640*zoom,PADL=96,PADR=16,PADT=40,PADB=64;
   const bw=(W-PADL-PADR)/Math.max(pts.length,1);
   let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">`;
@@ -282,22 +326,21 @@ function renderHourlyKey(elId,legId,hourly){
       const h=(c/yMax)*(H-PADT-PADB); y-=h;
       svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"><title>${p.hour}:00 ${n}: $${c.toFixed(2)}</title></rect>`;
     });
-    svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${String(parseInt(p.hour))}</text>`;
+    svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${parseInt(p.hour)}</text>`;
   });
   svg+='</svg>';
   $(elId).innerHTML=`<div class="hscroll"><div style="min-width:820px">${svg}</div></div>`;
   const sum=Object.values(totals).reduce((a,b)=>a+b,0);
   $(legId).innerHTML=sorted.length
     ? names.filter(n=>totals[n]>0).map(n=>`<span class="item"><span class="dot" style="background:${colors[n]}"></span>${n} · ${fmt$(totals[n])}</span>`).join('')
-      + `<span class="item msg">Summe heute ${fmt$(sum)} · Stundenwerte aus 5-Min-Zählerständen</span>`
-    : '<span class="msg">Noch keine Stundenwerte – Messung läuft seit dem ersten Sample.</span>';
+      + `<span class="item msg">${t('hourly_sum')} ${fmt$(sum)} · ${t('hourly_src')}</span>`
+    : `<span class="msg">${t('hourly_empty')}</span>`;
 }
 
 function draw(){
-  $('title-model').textContent = perModel==='24h' ? 'Verbrauch pro Stunde (gesamt)' : 'Verbrauch pro Modell';
-  $('title-ws').textContent = perWs==='24h' ? 'Verbrauch pro API-Key (stündlich)' : 'Verbrauch pro API-Key (alle Workspaces)';
-  $('card-ws').style.display = '';
-  $('hourly-note').textContent = perModel==='24h' ? (data.hourly_note||'') : '';
+  $('title-model').textContent = perModel==='24h' ? t('per_hour') : t('per_model');
+  $('title-ws').textContent = perWs==='24h' ? t('per_key_hourly') : t('per_key');
+  $('hourly-note').textContent = perModel==='24h' ? t('hourly_note') : '';
   if(perModel==='24h'){ renderHourly('chart-model','legend-model',data.hourly); }
   else { renderChart('chart-model','legend-model',pick(data.daily_model,perModel).perDay); }
   if(perWs==='24h'){ renderHourlyKey('chart-ws','legend-ws',data.hourly); }
@@ -305,45 +348,40 @@ function draw(){
 }
 
 function render(){
-  if(!data||data.empty){ $('sub').textContent='Noch keine Daten – klicke Reload, um einen ersten Abruf zu starten.'; return; }
+  if(!data||data.empty){ $('sub').textContent=t('no_data_yet'); return; }
   const c=data.credits||{};
   $('kpi-credits').textContent=fmt$(Math.max(0,(c.total_credits||0)-(c.total_usage||0)));
   $('kpi-used').textContent=fmt$(c.total_usage||0);
   $('kpi-total').textContent=fmt$(c.total_credits||0);
   const up=data.updated_at?new Date(data.updated_at):null;
-  $('sub').textContent=up?('Zuletzt aktualisiert: '+up.toLocaleString('de-DE')+' · '+Object.keys(data.totals.model).length+' Modelle · '+Object.keys(data.totals.workspace||{}).length+' Workspaces · '+(data.keys||[]).length+' Keys'):'';
+  $('sub').textContent=up?(t('updated')+': '+up.toLocaleString(locale)+' · '+Object.keys(data.totals.model).length+' '+t('models')+' · '+(data.keys||[]).length+' '+t('keys')):'';
   $('months').innerHTML=(data.monthly||[]).map(m=>{
     const d=new Date(m.month+'-01T12:00:00Z');
-    return `<div class="kpi"><div class="l">${d.toLocaleDateString('de-DE',{month:'long',year:'numeric'})}${m.partial?' <span class="badge">teilweise erfasst</span>':''}</div><div class="v">${fmt$(m.cost)}</div></div>`;
+    return `<div class="kpi"><div class="l">${d.toLocaleDateString(locale,{month:'long',year:'numeric'})}${m.partial?' <span class="badge">'+t('partial')+'</span>':''}</div><div class="v">${fmt$(m.cost)}</div></div>`;
   }).join('');
-  $('monthly-note').textContent='Hinweis: Die OpenRouter-API liefert Verbruchsdaten nur ~30 Tage zurück. Ältere Monate füllen sich mit der Zeit aus dem lokal gespeicherten Verlauf.';
+  $('monthly-note').textContent=t('monthly_note');
   const keys=data.keys||[];
-  $('keys-count').textContent=keys.length+' Keys in '+(data.workspaces||[]).length+' Workspaces';
+  $('keys-count').textContent=keys.length+' '+t('keys')+' · '+(data.workspaces||[]).length+' '+t('workspaces');
   const rows=keys.slice().sort((a,b)=>((b.limit?b.usage_monthly/b.limit:-1)-(a.limit?a.usage_monthly/a.limit:-1)));
   $('keys-table').querySelector('tbody').innerHTML=rows.map(k=>{
     const lim=(k.limit!=null&&k.limit>0)?k.limit:null;
     const rest=(k.limit_remaining!=null)?k.limit_remaining:null;
-    // limit_remaining gilt fuer den laufenden Reset-Zeitraum (weekly/monthly) ->
-    // Verbrauch der Periode = Limit - Rest (nicht usage_monthly, das ist der Monat).
     const used=(lim!=null&&rest!=null)?Math.max(0,lim-rest):(k.usage_monthly||0);
     const pct=lim?Math.min(100,used/lim*100):null;
-    const iv=(k.limit_reset==='weekly')?'Woche':(k.limit_reset==='daily'?'Tag':(k.limit_reset==='monthly'?'Monat':(k.limit_reset||'')));
     const cls=pct==null?'':(pct>=80?'warn':(pct>=60?'high':''));
-    const bar=pct==null?'<span class="muted">kein Limit</span>'
-      :`<div class="ubar ${cls}"><div class="track"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div><span>${pct.toFixed(1).replace('.',',')} %</span></div>`;
+    const iv=(k.limit_reset==='weekly')?t('week'):(k.limit_reset==='daily'?t('day'):(k.limit_reset==='monthly'?t('month'):(k.limit_reset||'')));
+    const bar=pct==null?`<span class="muted">${t('no_limit')}</span>`
+      :`<div class="ubar ${cls}"><div class="track"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div><span>${pct.toFixed(1).replace('.', LANG==='de'?',':'.')} %</span></div>`;
     return `<tr>
       <td><span class="kname">${k.name}</span>${(k.workspace&&k.workspace!==k.name)?`<span class="kws">${k.workspace}</span>`:''}</td>
       <td class="num">${lim!=null?fmt$(lim):'–'}${iv?`<span class="kws">/ ${iv}</span>`:''}</td>
       <td class="num">${fmt$(used)}</td>
       <td class="num" style="${pct!=null&&pct>=80?'color:#ff8f8f;font-weight:600':''}">${rest!=null?fmt$(rest):'–'}</td>
       <td>${bar}</td>
-      <td>${k.disabled?'<span class="pill off">deaktiviert</span>':'<span class="pill">aktiv</span>'}</td>
+      <td>${k.disabled?`<span class="pill off">${t('disabled')}</span>`:`<span class="pill">${t('active')}</span>`}</td>
     </tr>`;
   }).join('');
-  const ivs=[...new Set(keys.map(k=>k.limit_reset).filter(Boolean))]
-    .map(v=>v==='weekly'?'Woche':v==='daily'?'Tag':v==='monthly'?'Monat':v);
-  $('keys-note').textContent='Limit und Rest gelten je Abrechnungszeitraum'+(ivs.length?' ('+ivs.join(', ')+')':'')+
-    ', nicht pro Monat. Ab 80 % Auslastung rot markiert.';
+  $('keys-note').textContent=t('keys_note');
   draw();
   const segM=document.getElementById('seg-model'), segW=document.getElementById('seg-ws');
   segM.querySelectorAll('button').forEach(b=>{
@@ -355,22 +393,20 @@ function render(){
     b.onclick=()=>{ perWs=b.dataset.p; segW.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); draw(); };
   });
   const s=(data.state)||{};
-  $('status-msg').innerHTML=s.last_error?('Fehler beim letzten Abruf: '+s.last_error):('Letzter erfolgreicher Abruf: '+(s.last_ok?new Date(s.last_ok).toLocaleString('de-DE'):'–'));
+  $('status-msg').innerHTML=s.last_error?(t('last_err')+': '+s.last_error):(t('last_ok')+': '+(s.last_ok?new Date(s.last_ok).toLocaleString(locale):'–'));
 }
 
-async function load(){ try{ const r=await fetch('/api/data',{cache:'no-store'}); data=await r.json(); render(); }catch(e){ $('sub').textContent='Fehler beim Laden: '+e; } }
+async function load(){ try{ const r=await fetch('/api/data',{cache:'no-store'}); data=await r.json(); render(); }catch(e){ $('sub').textContent='Error: '+e; } }
 
 async function liveCycle(){
   if(liveBusy) return;
   liveBusy=true;
-  try{
-    await fetch('/api/refresh',{method:'POST'});
-    await load();
-  }catch(e){ $('status-msg').textContent='Live-Fehler: '+e; }
+  try{ await fetch('/api/refresh',{method:'POST'}); await load(); }
+  catch(e){ $('status-msg').textContent=t('live_err')+': '+e; }
   finally{ liveBusy=false; }
 }
 
-$('reload').onclick=async()=>{ $('reload').textContent='Lädt …';
+$('reload').onclick=async()=>{ $('reload').textContent=t('loading_btn');
   try{ await liveCycle(); } finally{ $('reload').textContent='Reload'; } };
 $('live').onclick=()=>{ if(live){ clearInterval(live); live=null; liveBusy=false; $('live').classList.remove('on'); $('live').textContent='Live'; }
   else{ $('live').classList.add('on'); $('live').textContent='Live ●';
@@ -386,7 +422,10 @@ applyZoomBtns();
 (async()=>{ try{ const r=await fetch('/api/config'); const c=await r.json(); $('interval').value=c.refresh_minutes; }catch(e){} })();
 $('save-interval').onclick=async()=>{
   try{ await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_minutes:+$('interval').value||60})});
-    $('status-msg').textContent='Intervall gespeichert: '+$('interval').value+' Minuten (wirkt ab dem nächsten Zyklus).'; }catch(e){ $('status-msg').textContent='Fehler: '+e; } };
+    $('status-msg').textContent=t('saved')+': '+$('interval').value; }catch(e){ $('status-msg').textContent='Error: '+e; } };
+
+applyI18n();
+$('sub').textContent=t('loading');
 load();
 </script>
 </body>

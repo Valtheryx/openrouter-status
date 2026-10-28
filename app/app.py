@@ -14,8 +14,9 @@ HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 HOURLY_FILE = os.path.join(DATA_DIR, "hourly.json")
 STATE_FILE = os.path.join(DATA_DIR, "state.json")
-RETENTION_DAYS = max(7, int(os.environ.get("RETENTION_DAYS", "93")))  # ~3 Monate
+RETENTION_DAYS = max(7, int(os.environ.get("RETENTION_DAYS", "93")))  # ~3 months
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+UI_LANG = "de" if os.environ.get("UI_LANG", "en").lower().startswith("de") else "en"
 OR_BASE = "https://openrouter.ai/api/v1"
 
 _lock = threading.Lock()
@@ -66,8 +67,8 @@ def _prune(hist):
 
 
 def collect():
-    """Stündliche Verdichtung: kumulative Zähler (Gesamt + pro Key) sampeln und
-    die Differenz seit dem letzten Sample in den aktuellen Stundenbucket legen."""
+    """Hourly compaction: sample the cumulative counters (total + per key) and add
+    the delta since the last sample to the current hour bucket."""
     global _last
     try:
         credits = or_get("/credits")["data"]
@@ -90,7 +91,7 @@ def collect():
                     acc = bk = cur.get(name, 0.0)
                     cur[name] = round(acc + d, 6)
         _last = {"t": now.isoformat(), "u": usage, "keys": key_usage}
-        # Vorhalt fuer die Stundenbuckets (~3 Monate)
+        # retention for the hour buckets (~3 months)
         cutoff = (now.astimezone(TZ) - timedelta(days=RETENTION_DAYS)).strftime("%Y-%m-%dT%H")
         for k in [k for k in _hourly if k < cutoff]:
             _hourly.pop(k, None)
@@ -101,8 +102,8 @@ def collect():
 
 
 def hourly_today():
-    """Rollende letzte 24 Stunden (Europe/Berlin): Gesamt und pro Key.
-    hour = Beschriftungsstunde ("5", "17", ...), day = ISO-Datum zur Einordnung."""
+    """Rolling last 24 hours (Europe/Berlin): total and per key.
+    hour = label hour ("5", "17", ...), day = ISO date for context."""
     now = datetime.now(TZ)
     start_hour = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=23)
     out = []
@@ -253,7 +254,7 @@ def build_payload():
         "daily_workspace": hist.get("daily_workspace", {}),
         "daily_key": hist.get("daily_key", {}),
         "hourly": hourly_today(),
-        "hourly_note": "Letzte 24 Stunden (rollend), Stundenwerte aus 5-Minuten-Zählerständen verdichtet. Modellaufteilung liefert die API nur tagesgenau.",
+        "hourly_note": "Last 24 hours (rolling), hourly values condensed from 5-minute counter samples. Model breakdown is only available per day.",
         "totals": {"model": dict(sorted(model_totals.items(), key=lambda x: -x[1])),
                    "workspace": dict(sorted(ws_totals.items(), key=lambda x: -x[1])),
                    "key": dict(sorted(key_totals.items(), key=lambda x: -x[1]))},
@@ -307,8 +308,18 @@ class Handler(BaseHTTPRequestHandler):
         p = self._path()
         if p in ("/", "/index.html"):
             try:
+                lang = UI_LANG
+                if "lang=" in self.path:
+                    q = self.path.split("?", 1)[1]
+                    for part in q.split("&"):
+                        if part.startswith("lang="):
+                            v = part[5:].lower()
+                            if v in ("en", "de"):
+                                lang = v
                 with open(os.path.join(BASE, "static", "index.html"), "rb") as f:
-                    self._send(200, f.read(), "text/html; charset=utf-8")
+                    html = f.read().replace(b"<!--UI_LANG-->",
+                                            f'<script>window.__UI_LANG__="{lang}"</script>'.encode())
+                    self._send(200, html, "text/html; charset=utf-8")
             except OSError:
                 self._send(500, {"error": "index.html missing"})
         elif p == "/api/data":
