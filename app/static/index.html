@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenRouter Status</title>
+<style>
+  :root{
+    --bg:#0f1420; --card:#171e2e; --border:#263049; --fg:#e7ecf5; --muted:#8fa0bd;
+    --accent:#6ea8fe;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1400px;margin:0 auto;padding:16px;width:100%}
+  h1{font-size:1.3rem;margin:8px 0 2px}
+  .sub{color:var(--muted);font-size:.85rem}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin:14px 0}
+  .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:12px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 10px;min-width:0}
+  .kpi .v{font-size:1.2rem;font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi .l{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;line-height:1.25}
+  .months{display:contents}
+  .months .kpi .v{font-size:1.35rem}
+  .badge{font-size:.7rem;background:#2a3550;color:var(--muted);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+  .seg button{background:transparent;color:var(--muted);border:0;padding:3px 9px;cursor:pointer;font-size:.74rem}
+  .seg button.on{background:var(--accent);color:#0b1020;font-weight:600}
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .toolbar .title{font-weight:600;flex:1}
+  button.act{background:var(--accent);color:#0b1020;border:0;border-radius:7px;padding:4px 10px;font-weight:600;cursor:pointer;font-size:.74rem}
+  button.ghost{background:transparent;color:var(--fg);border:1px solid var(--border)}
+  button.ghost.on{border-color:var(--accent);color:var(--accent)}
+  input[type=number]{background:#0c1120;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:3px 6px;width:64px;font-size:.78rem}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:.85rem}
+  .legend .item{display:flex;align-items:center;gap:6px}
+  .dot{width:11px;height:11px;border-radius:3px;flex:none}
+  .chart{width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  .msg{color:var(--muted);font-size:.85rem}
+  .muted{color:var(--muted)}
+  .tablewrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table.keys{width:100%;border-collapse:collapse;font-size:.8rem}
+  table.keys th{color:var(--muted);font-weight:600;font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;white-space:nowrap;border-bottom:1px solid var(--border)}
+  table.keys td{padding:4px 8px;border-bottom:1px solid rgba(38,48,73,.6);white-space:nowrap;vertical-align:middle}
+  table.keys tr:last-child td{border-bottom:0}
+  table.keys td.num{text-align:right;font-variant-numeric:tabular-nums}
+  table.keys .kname{font-weight:600}
+  table.keys .kws{font-size:.68rem;color:var(--muted);margin-left:6px}
+  .ubar{display:flex;align-items:center;gap:6px;min-width:110px}
+  .ubar .track{flex:1;height:6px;background:#233048;border-radius:3px;overflow:hidden}
+  .ubar .fill{height:100%;background:var(--accent)}
+  .ubar.warn .fill{background:#ff6b6b}
+  .ubar.high .fill{background:#f2b84b}
+  .ubar span{font-variant-numeric:tabular-nums;font-size:.74rem;min-width:38px;text-align:right}
+  .pill{font-size:.66rem;border-radius:5px;padding:1px 6px;background:#243450;color:var(--muted)}
+  .pill.off{background:#4a2029;color:#ff9c9c}
+  .err{color:#ff8080}
+  @media (max-width:700px){ .kpi{padding:6px 8px} .kpi .v{font-size:.98rem} .kpi .l{font-size:.58rem} .badge{display:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>OpenRouter Status</h1>
+  <div class="sub" id="sub">Lade Daten …</div>
+
+  <div class="kpis" id="kpis">
+    <div class="kpi"><div class="l">Verfügbare Credits</div><div class="v" id="kpi-credits">–</div></div>
+    <div class="kpi"><div class="l">Gesamt verbraucht</div><div class="v" id="kpi-used">–</div></div>
+    <div class="kpi"><div class="l">Credits gesamt (aufgeladen)</div><div class="v" id="kpi-total">–</div></div>
+    <div class="months" id="months"></div>
+  </div>
+  <div class="msg" id="monthly-note" style="margin:6px 2px 0"></div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="title" id="title-model">Verbrauch pro Modell</div>
+      <div class="seg" id="seg-model"><button data-p="30d" class="on">Letzte 30 Tage</button><button data-p="7d">Letzte 7 Tage</button><button data-p="24h">Letzte 24h</button></div>
+    </div>
+    <div class="chart" id="chart-model"></div>
+    <div class="legend" id="legend-model"></div>
+  </div>
+
+  <div class="card" id="card-ws">
+    <div class="toolbar">
+      <div class="title" id="title-ws">Verbrauch pro API-Key (alle Workspaces)</div>
+      <div class="seg" id="seg-ws"><button data-p="30d" class="on">Letzte 30 Tage</button><button data-p="7d">Letzte 7 Tage</button><button data-p="24h">Letzte 24h</button></div>
+    </div>
+    <div class="chart" id="chart-ws"></div>
+    <div class="legend" id="legend-ws"></div>
+  </div>
+  <div class="msg" id="hourly-note" style="margin:2px 2px 0"></div>
+
+  <div class="card">
+    <div class="toolbar"><div class="title">Restbudget pro API-Key</div><span class="msg" id="keys-count"></span></div>
+    <div class="tablewrap">
+      <table class="keys" id="keys-table"><thead><tr>
+        <th>Key</th><th class="num">Limit / Zeitraum</th><th class="num">Genutzt</th><th class="num">Rest</th><th>Auslastung</th><th>Status</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="msg" id="keys-note" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="title">Einstellungen</div>
+      <label class="msg">Zoom:
+        <span class="seg" id="seg-zoom"><button data-z="S">S</button><button data-z="M" class="on">M</button><button data-z="L">L</button></span>
+      </label>
+      <label class="msg">Aktualisierungsintervall (Minuten):
+        <input type="number" id="interval" min="1" max="1440">
+      </label>
+      <button class="act ghost" id="save-interval">Speichern</button>
+      <button class="act ghost" id="live">Live</button>
+      <button class="act" id="reload">Reload</button>
+    </div>
+    <div class="msg" id="status-msg"></div>
+  </div>
+</div>
+<script>
+let data=null, live=null, liveBusy=false, perModel='30d', perWs='30d';
+const ZOOMS={S:0.7,M:1,L:1.4};
+let zoomName=localStorage.getItem('or_zoom')||'M';
+if(!ZOOMS[zoomName]) zoomName='M';
+let zoom=ZOOMS[zoomName];
+const $=id=>document.getElementById(id);
+const fmt$=v=>'$'+Number(v).toFixed(2);
+const PALETTE=['#6ea8fe','#7ee0a3','#ffb86b','#ff7d9c','#b48cff'];
+const OTHER_COLOR='#9aa8c7';
+
+function pick(entry, days){
+  const out={};
+  const daysSorted=Object.keys(entry).sort();
+  const last=daysSorted[daysSorted.length-1];
+  if(!last) return {days:[],perDay:{}};
+  const lastDate=new Date(last+'T12:00:00Z');
+  let wanted=[];
+  if(days==='24h'){ wanted=[last]; }
+  else{
+    const n=days==='7d'?7:30;
+    for(let i=0;i<n;i++){
+      const d=new Date(lastDate.getTime()-i*86400000).toISOString().slice(0,10);
+      if(d>=daysSorted[0]) wanted.push(d);
+    }
+    wanted.reverse();
+  }
+  wanted.forEach(d=>{ out[d]=entry[d]||{}; });
+  return {days:wanted,perDay:out};
+}
+
+function top5PlusOther(perDay, days){
+  const totals={};
+  days.forEach(d=>{
+    Object.entries(perDay[d]).forEach(([n,v])=>{ totals[n]=(totals[n]||0)+v.cost; });
+  });
+  const sorted=Object.entries(totals).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]);
+  const top=sorted.slice(0,5).map(([n])=>n);
+  const rest=sorted.slice(5).map(([n])=>n);
+  const collapsed={};
+  days.forEach(d=>{
+    const src=perDay[d], agg={cost:0,tokens:0,requests:0};
+    rest.forEach(n=>{ const v=src[n]; if(v){ agg.cost+=v.cost; agg.tokens+=v.tokens; agg.requests+=v.requests; } });
+    const out={};
+    top.forEach(n=>{ if(src[n]) out[n]=src[n]; });
+    if(agg.cost>0) out['Sonstige']={cost:agg.cost,tokens:agg.tokens,requests:agg.requests};
+    collapsed[d]=out;
+  });
+  const extra=sorted.slice(5,10).map(([n,c])=>({name:n,cost:c}));
+  return {collapsed, totals, top, extra};
+}
+
+function niceStep(max, ticks){
+  const cands=[1,2,5,10,20,25,50,100,200,250,500,1000,2000,2500,5000];
+  for(const c of cands){ if(c*ticks>=max) return c; }
+  return Math.ceil(max/ticks);
+}
+
+function renderChart(elId,legId,perDay){
+  const days=Object.keys(perDay);
+  const {collapsed,totals,top,extra}=top5PlusOther(perDay,days);
+  const names=[...top];
+  if(days.some(d=>collapsed[d]&&collapsed[d]['Sonstige'])) names.push('Sonstige');
+  const colors={};
+  names.forEach((n,i)=>colors[n]=n==='Sonstige'?OTHER_COLOR:PALETTE[i%PALETTE.length]);
+  const periodTotals={};
+  days.forEach(d=>Object.entries(collapsed[d]).forEach(([n,v])=>{ periodTotals[n]=(periodTotals[n]||0)+v.cost; }));
+  const W=1000,H=Math.max(440,days.length===1?520:640)*zoom,PADL=96,PADR=16,PADT=40,PADB=64;
+  const maxDay=Math.max(...days.map(d=>Object.values(collapsed[d]).reduce((s,v)=>s+v.cost,0)),0.0001);
+  const yMax=Math.max(1,Math.ceil(maxDay));               // naechster voller Dollar
+  const step=Math.max(1,Math.ceil(yMax/6));               // ganzzahlige Stufen, ~6 Linien
+  const ticks=[]; for(let v=0;v<yMax;v+=step) ticks.push(v); ticks.push(yMax);
+  const bw=(W-PADL-PADR)/Math.max(days.length,1);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">`;
+  ticks.forEach(v=>{
+    const y=PADT+(H-PADT-PADB)*(1-v/yMax);
+    svg+=`<line x1="${PADL}" y1="${y}" x2="${W-PADR}" y2="${y}" stroke="#2c364f" stroke-width="1"/>`;
+    svg+=`<text x="${PADL-12}" y="${y+6}" fill="#cfd9ea" font-size="20" font-weight="600" text-anchor="end">$${v}</text>`;
+  });
+  days.forEach((d,i)=>{
+    const x=PADL+i*bw+2, w=Math.max(bw-4,3);
+    let y=H-PADB;
+    const entries=Object.entries(collapsed[d]).filter(([,v])=>v.cost>0)
+      .sort((a,b)=>(totals[b[0]]||0)-(totals[a[0]]||0));
+    entries.forEach(([n,v])=>{
+      const h=(v.cost/yMax)*(H-PADT-PADB);
+      y-=h;
+      svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"><title>${d} ${n}: $${v.cost.toFixed(2)} · ${v.tokens.toLocaleString('de-DE')} Tokens · ${v.requests} Requests</title></rect>`;
+    });
+    const lbl=d.slice(8,10)+'.'+d.slice(5,7);
+    const stepX=Math.ceil(days.length/(W/70));
+    if(i%stepX===0) svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${lbl}</text>`;
+  });
+  svg+='</svg>';
+  $(elId).innerHTML=svg;
+  const legendNames=names.filter(n=>(periodTotals[n]||0)>0);
+  let leg=legendNames.map(n=>
+    `<span class="item"><span class="dot" style="background:${colors[n]}"></span>${n} · ${fmt$(periodTotals[n])}</span>`).join('');
+  if(extra && extra.length){
+    leg+=extra.map(e=>`<span class="item" style="opacity:.7"><span class="dot" style="background:#4a5670"></span>${e.name} · ${fmt$(e.cost)} <span class="msg">(in Sonstige)</span></span>`).join('');
+  }
+  $(legId).innerHTML=leg||'<span class="msg">Keine Daten im gewählten Zeitraum</span>';
+}
+
+function renderHourly(elId,legId,hourly){
+  const pts=hourly||[];
+  const W=1000,H=640*zoom,PADL=96,PADR=16,PADT=40,PADB=64;
+  const maxV=Math.max(...pts.map(p=>p.cost),0.0001);
+  const yMax=Math.max(1,Math.ceil(maxV));
+  const step=Math.max(1,Math.ceil(yMax/6));
+  const ticks=[]; for(let v=0;v<yMax;v+=step) ticks.push(v); ticks.push(yMax);
+  const bw=(W-PADL-PADR)/Math.max(pts.length,1);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">`;
+  ticks.forEach(v=>{
+    const y=PADT+(H-PADT-PADB)*(1-v/yMax);
+    svg+=`<line x1="${PADL}" y1="${y}" x2="${W-PADR}" y2="${y}" stroke="#2c364f" stroke-width="1"/>`;
+    svg+=`<text x="${PADL-12}" y="${y+6}" fill="#cfd9ea" font-size="20" font-weight="600" text-anchor="end">$${v}</text>`;
+  });
+  pts.forEach((p,i)=>{
+    const x=PADL+i*bw+2, w=Math.max(bw-4,3);
+    const h=(p.cost/yMax)*(H-PADT-PADB);
+    svg+=`<rect x="${x}" y="${Math.max(PADT,H-PADB-h)}" width="${w}" height="${Math.max(h,0.5)}" fill="#6ea8fe"><title>${p.day} ${p.hour}:00–${(parseInt(p.hour)+1)%24}:00 · $${p.cost.toFixed(2)}</title></rect>`;
+    svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${String(parseInt(p.hour))}</text>`;
+  });
+  svg+='</svg>';
+  $(elId).innerHTML=`<div class="hscroll"><div style="min-width:820px">${svg}</div></div>`;
+  const sum=pts.reduce((a,p)=>a+p.cost,0);
+  $(legId).innerHTML=pts.length
+    ? `<span class="item"><span class="dot" style="background:#6ea8fe"></span>Gesamt pro Stunde · ${fmt$(sum)}</span>`
+    : '<span class="msg">Noch keine Stundenwerte – die Messung beginnt mit dem ersten 5-Minuten-Snapshot. Die Werte füllen sich ab jetzt stündlich.</span>';
+}
+
+function renderHourlyKey(elId,legId,hourly){
+  const pts=(hourly||[]);
+  const totals={};
+  pts.forEach(p=>Object.entries(p.keys||{}).forEach(([n,c])=>{ totals[n]=(totals[n]||0)+c; }));
+  const sorted=Object.entries(totals).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]);
+  const top=sorted.slice(0,5).map(([n])=>n), rest=sorted.slice(5).map(([n])=>n);
+  const names=[...top]; if(sorted.length>5) names.push('Sonstige');
+  const colors={}; names.forEach((n,i)=>colors[n]=n==='Sonstige'?OTHER_COLOR:PALETTE[i%PALETTE.length]);
+  const rows=pts.map(p=>{
+    const out={}; let other=0;
+    Object.entries(p.keys||{}).forEach(([n,c])=>{
+      if(top.includes(n)) out[n]=(out[n]||0)+c; else other+=c;
+    });
+    if(other>0) out['Sonstige']=other;
+    return out;
+  });
+  const maxV=Math.max(...pts.map((p,i)=>Object.values(rows[i]).reduce((a,b)=>a+b,0)),0.0001);
+  const yMax=Math.max(1,Math.ceil(maxV)), step=Math.max(1,Math.ceil(yMax/6));
+  const ticks=[]; for(let v=0;v<yMax;v+=step) ticks.push(v); ticks.push(yMax);
+  const W=1000,H=640*zoom,PADL=96,PADR=16,PADT=40,PADB=64;
+  const bw=(W-PADL-PADR)/Math.max(pts.length,1);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">`;
+  ticks.forEach(v=>{
+    const y=PADT+(H-PADT-PADB)*(1-v/yMax);
+    svg+=`<line x1="${PADL}" y1="${y}" x2="${W-PADR}" y2="${y}" stroke="#2c364f" stroke-width="1"/>`;
+    svg+=`<text x="${PADL-12}" y="${y+6}" fill="#cfd9ea" font-size="20" font-weight="600" text-anchor="end">$${v}</text>`;
+  });
+  pts.forEach((p,i)=>{
+    const x=PADL+i*bw+2, w=Math.max(bw-4,3);
+    let y=H-PADB;
+    Object.entries(rows[i]).sort((a,b)=>(totals[b[0]]||0)-(totals[a[0]]||0)).forEach(([n,c])=>{
+      if(c<=0) return;
+      const h=(c/yMax)*(H-PADT-PADB); y-=h;
+      svg+=`<rect x="${x}" y="${Math.max(PADT,y)}" width="${w}" height="${Math.max(h,0.5)}" fill="${colors[n]}"><title>${p.hour}:00 ${n}: $${c.toFixed(2)}</title></rect>`;
+    });
+    svg+=`<text x="${x+w/2}" y="${H-PADB+20}" fill="#8fa0bd" font-size="12" text-anchor="middle">${String(parseInt(p.hour))}</text>`;
+  });
+  svg+='</svg>';
+  $(elId).innerHTML=`<div class="hscroll"><div style="min-width:820px">${svg}</div></div>`;
+  const sum=Object.values(totals).reduce((a,b)=>a+b,0);
+  $(legId).innerHTML=sorted.length
+    ? names.filter(n=>totals[n]>0).map(n=>`<span class="item"><span class="dot" style="background:${colors[n]}"></span>${n} · ${fmt$(totals[n])}</span>`).join('')
+      + `<span class="item msg">Summe heute ${fmt$(sum)} · Stundenwerte aus 5-Min-Zählerständen</span>`
+    : '<span class="msg">Noch keine Stundenwerte – Messung läuft seit dem ersten Sample.</span>';
+}
+
+function draw(){
+  $('title-model').textContent = perModel==='24h' ? 'Verbrauch pro Stunde (gesamt)' : 'Verbrauch pro Modell';
+  $('title-ws').textContent = perWs==='24h' ? 'Verbrauch pro API-Key (stündlich)' : 'Verbrauch pro API-Key (alle Workspaces)';
+  $('card-ws').style.display = '';
+  $('hourly-note').textContent = perModel==='24h' ? (data.hourly_note||'') : '';
+  if(perModel==='24h'){ renderHourly('chart-model','legend-model',data.hourly); }
+  else { renderChart('chart-model','legend-model',pick(data.daily_model,perModel).perDay); }
+  if(perWs==='24h'){ renderHourlyKey('chart-ws','legend-ws',data.hourly); }
+  else { renderChart('chart-ws','legend-ws',pick(data.daily_key||{},perWs).perDay); }
+}
+
+function render(){
+  if(!data||data.empty){ $('sub').textContent='Noch keine Daten – klicke Reload, um einen ersten Abruf zu starten.'; return; }
+  const c=data.credits||{};
+  $('kpi-credits').textContent=fmt$(Math.max(0,(c.total_credits||0)-(c.total_usage||0)));
+  $('kpi-used').textContent=fmt$(c.total_usage||0);
+  $('kpi-total').textContent=fmt$(c.total_credits||0);
+  const up=data.updated_at?new Date(data.updated_at):null;
+  $('sub').textContent=up?('Zuletzt aktualisiert: '+up.toLocaleString('de-DE')+' · '+Object.keys(data.totals.model).length+' Modelle · '+Object.keys(data.totals.workspace||{}).length+' Workspaces · '+(data.keys||[]).length+' Keys'):'';
+  $('months').innerHTML=(data.monthly||[]).map(m=>{
+    const d=new Date(m.month+'-01T12:00:00Z');
+    return `<div class="kpi"><div class="l">${d.toLocaleDateString('de-DE',{month:'long',year:'numeric'})}${m.partial?' <span class="badge">teilweise erfasst</span>':''}</div><div class="v">${fmt$(m.cost)}</div></div>`;
+  }).join('');
+  $('monthly-note').textContent='Hinweis: Die OpenRouter-API liefert Verbruchsdaten nur ~30 Tage zurück. Ältere Monate füllen sich mit der Zeit aus dem lokal gespeicherten Verlauf.';
+  const keys=data.keys||[];
+  $('keys-count').textContent=keys.length+' Keys in '+(data.workspaces||[]).length+' Workspaces';
+  const rows=keys.slice().sort((a,b)=>((b.limit?b.usage_monthly/b.limit:-1)-(a.limit?a.usage_monthly/a.limit:-1)));
+  $('keys-table').querySelector('tbody').innerHTML=rows.map(k=>{
+    const lim=(k.limit!=null&&k.limit>0)?k.limit:null;
+    const rest=(k.limit_remaining!=null)?k.limit_remaining:null;
+    // limit_remaining gilt fuer den laufenden Reset-Zeitraum (weekly/monthly) ->
+    // Verbrauch der Periode = Limit - Rest (nicht usage_monthly, das ist der Monat).
+    const used=(lim!=null&&rest!=null)?Math.max(0,lim-rest):(k.usage_monthly||0);
+    const pct=lim?Math.min(100,used/lim*100):null;
+    const iv=(k.limit_reset==='weekly')?'Woche':(k.limit_reset==='daily'?'Tag':(k.limit_reset==='monthly'?'Monat':(k.limit_reset||'')));
+    const cls=pct==null?'':(pct>=80?'warn':(pct>=60?'high':''));
+    const bar=pct==null?'<span class="muted">kein Limit</span>'
+      :`<div class="ubar ${cls}"><div class="track"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div><span>${pct.toFixed(1).replace('.',',')} %</span></div>`;
+    return `<tr>
+      <td><span class="kname">${k.name}</span>${(k.workspace&&k.workspace!==k.name)?`<span class="kws">${k.workspace}</span>`:''}</td>
+      <td class="num">${lim!=null?fmt$(lim):'–'}${iv?`<span class="kws">/ ${iv}</span>`:''}</td>
+      <td class="num">${fmt$(used)}</td>
+      <td class="num" style="${pct!=null&&pct>=80?'color:#ff8f8f;font-weight:600':''}">${rest!=null?fmt$(rest):'–'}</td>
+      <td>${bar}</td>
+      <td>${k.disabled?'<span class="pill off">deaktiviert</span>':'<span class="pill">aktiv</span>'}</td>
+    </tr>`;
+  }).join('');
+  const ivs=[...new Set(keys.map(k=>k.limit_reset).filter(Boolean))]
+    .map(v=>v==='weekly'?'Woche':v==='daily'?'Tag':v==='monthly'?'Monat':v);
+  $('keys-note').textContent='Limit und Rest gelten je Abrechnungszeitraum'+(ivs.length?' ('+ivs.join(', ')+')':'')+
+    ', nicht pro Monat. Ab 80 % Auslastung rot markiert.';
+  draw();
+  const segM=document.getElementById('seg-model'), segW=document.getElementById('seg-ws');
+  segM.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.p===perModel);
+    b.onclick=()=>{ perModel=b.dataset.p; segM.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); draw(); };
+  });
+  segW.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.p===perWs);
+    b.onclick=()=>{ perWs=b.dataset.p; segW.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); draw(); };
+  });
+  const s=(data.state)||{};
+  $('status-msg').innerHTML=s.last_error?('Fehler beim letzten Abruf: '+s.last_error):('Letzter erfolgreicher Abruf: '+(s.last_ok?new Date(s.last_ok).toLocaleString('de-DE'):'–'));
+}
+
+async function load(){ try{ const r=await fetch('/api/data',{cache:'no-store'}); data=await r.json(); render(); }catch(e){ $('sub').textContent='Fehler beim Laden: '+e; } }
+
+async function liveCycle(){
+  if(liveBusy) return;
+  liveBusy=true;
+  try{
+    await fetch('/api/refresh',{method:'POST'});
+    await load();
+  }catch(e){ $('status-msg').textContent='Live-Fehler: '+e; }
+  finally{ liveBusy=false; }
+}
+
+$('reload').onclick=async()=>{ $('reload').textContent='Lädt …';
+  try{ await liveCycle(); } finally{ $('reload').textContent='Reload'; } };
+$('live').onclick=()=>{ if(live){ clearInterval(live); live=null; liveBusy=false; $('live').classList.remove('on'); $('live').textContent='Live'; }
+  else{ $('live').classList.add('on'); $('live').textContent='Live ●';
+    liveCycle(); live=setInterval(liveCycle,10000); } };
+function applyZoomBtns(){
+  document.querySelectorAll('#seg-zoom button').forEach(b=>b.classList.toggle('on', b.dataset.z===zoomName));
+}
+document.querySelectorAll('#seg-zoom button').forEach(b=>{
+  b.onclick=()=>{ zoomName=b.dataset.z; zoom=ZOOMS[zoomName];
+    localStorage.setItem('or_zoom', zoomName); applyZoomBtns(); if(data&&!data.empty) draw(); };
+});
+applyZoomBtns();
+(async()=>{ try{ const r=await fetch('/api/config'); const c=await r.json(); $('interval').value=c.refresh_minutes; }catch(e){} })();
+$('save-interval').onclick=async()=>{
+  try{ await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_minutes:+$('interval').value||60})});
+    $('status-msg').textContent='Intervall gespeichert: '+$('interval').value+' Minuten (wirkt ab dem nächsten Zyklus).'; }catch(e){ $('status-msg').textContent='Fehler: '+e; } };
+load();
+</script>
+</body>
+</html>
