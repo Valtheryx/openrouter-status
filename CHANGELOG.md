@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.4 – 2026-10-28
+
+### Changed
+
+- Shortened the current-day series label in the model legend to "Today (estimated)" /
+  "Heute (geschätzt)".
+- Live mode now refreshes every 15 seconds instead of 10, leaving slow upstream fetches
+  enough time to answer before the next cycle asks again.
+
 ## 1.1.3 – 2026-10-28
 
 ### Changed

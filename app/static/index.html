@@ -137,7 +137,7 @@ const I18N = {
     hourly_sum:"today", hourly_src:"hourly values from 5-minute counters",
     hourly_empty:"No hourly values yet – measurement starts with the first 5-minute sample.",
     hourly_note:"Last 24 hours (rolling). Hourly values are condensed from 5-minute counter samples; the model breakdown is only available per day.",
-    today_hourly:"Today (hourly total; model split unavailable)",
+    today_hourly:"Today (estimated)",
     today_hourly_note:"Current-day total is provisional from hourly counters; no model attribution.",
     hourly_no_model:"Hourly counter totals; model attribution unavailable in the API.",
     total_per_hour:"Total per hour", loading_btn:"Loading …", live_err:"Live error", saved:"Interval saved"
@@ -160,7 +160,7 @@ const I18N = {
     hourly_sum:"Summe heute", hourly_src:"Stundenwerte aus 5-Min-Zählerständen",
     hourly_empty:"Noch keine Stundenwerte – die Messung beginnt mit dem ersten 5-Minuten-Sample.",
     hourly_note:"Letzte 24 Stunden (rollend). Stundenwerte aus 5-Min-Zählerständen verdichtet; die Modellaufteilung liefert die API nur tagesgenau.",
-    today_hourly:"Heute (Stundensumme; Modellaufteilung nicht verfügbar)",
+    today_hourly:"Heute (geschätzt)",
     today_hourly_note:"Tagessumme vorläufig aus Stunden-Zählerständen; keine Modellzuordnung.",
     hourly_no_model:"Stundensummen aus Zählerständen; die API liefert keine Modellzuordnung.",
     total_per_hour:"Summe pro Stunde", loading_btn:"Lädt …", live_err:"Live-Fehler", saved:"Intervall gespeichert"
@@ -428,7 +428,7 @@ $('reload').onclick=async()=>{ $('reload').textContent=t('loading_btn');
   try{ await liveCycle(); } finally{ $('reload').textContent='Reload'; } };
 $('live').onclick=()=>{ if(live){ clearInterval(live); live=null; liveBusy=false; $('live').classList.remove('on'); $('live').textContent='Live'; }
   else{ $('live').classList.add('on'); $('live').textContent='Live ●';
-    liveCycle(); live=setInterval(liveCycle,10000); } };
+    liveCycle(); live=setInterval(liveCycle,15000); } };
 function applyZoomBtns(){
   document.querySelectorAll('#seg-zoom button').forEach(b=>b.classList.toggle('on', b.dataset.z===zoomName));
 }

@@ -45,7 +45,7 @@ additional source of truth.
   a percentage bar and a status pill. Rows at 80 % or more turn red, 60–80 % amber. The
   percentage is calculated from `limit - limit_remaining` (the current reset period), not
   from the monthly usage.
-- **Controls** – Reload (immediate upstream fetch), Live (fetch plus refresh every 10 s),
+- **Controls** – Reload (immediate upstream fetch), Live (fetch plus refresh every 15 s),
   a configurable refresh interval, and S/M/L chart zoom. On narrow screens the charts scroll
   horizontally instead of squeezing the bars.
 - **Two UI languages** – English and German (`UI_LANG`, or `?lang=en|de` per request).

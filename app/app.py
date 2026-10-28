@@ -17,7 +17,7 @@ STATE_FILE = os.path.join(DATA_DIR, "state.json")
 RETENTION_DAYS = max(7, int(os.environ.get("RETENTION_DAYS", "93")))  # ~3 months
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 UI_LANG = "de" if os.environ.get("UI_LANG", "en").lower().startswith("de") else "en"
-APP_VERSION = "1.1.3"
+APP_VERSION = "1.1.4"
 OR_BASE = "https://openrouter.ai/api/v1"
 
 _lock = threading.Lock()
