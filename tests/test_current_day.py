@@ -51,15 +51,13 @@ class CurrentDayChartTests(unittest.TestCase):
         app._hourly = self.old_hourly
         self.temp.cleanup()
 
-    def test_estimates_today_split_from_previous_model_mix(self):
+    def test_today_stays_an_unallocated_total_without_model_attribution(self):
         payload = app.build_payload()
         today = payload["daily_model"][self.today]
-        self.assertEqual(set(today), {"model-x", "model-y"})
-        self.assertAlmostEqual(today["model-x"]["cost"], 0.225)
-        self.assertAlmostEqual(today["model-y"]["cost"], 0.075)
-        self.assertTrue(today["model-x"]["est"])
-        self.assertEqual(payload["today"], {"date": self.today, "estimated": True,
-                                            "basis": self.yesterday})
+        self.assertEqual(list(today), ["__today_hourly__"])
+        self.assertAlmostEqual(today["__today_hourly__"]["cost"], 0.3)
+        self.assertNotIn("model_mix", payload)
+        self.assertEqual(payload["today"], {"date": self.today, "provisional": True})
         self.assertEqual(set(payload["daily_key"][self.today]), {"key-x", "key-y"})
         self.assertAlmostEqual(payload["monthly"][-1]["cost"], 1.3)
 
@@ -69,20 +67,14 @@ class CurrentDayChartTests(unittest.TestCase):
         today = payload["daily_model"][self.today]
         self.assertEqual(list(today), ["__today_hourly__"])
         self.assertAlmostEqual(today["__today_hourly__"]["cost"], 0.3)
-        self.assertFalse(payload["today"]["estimated"])
+        self.assertTrue(payload["today"]["provisional"])
 
-    def test_exposes_model_mix_for_hourly_estimates(self):
-        payload = app.build_payload()
-        mix = payload["model_mix"]
-        self.assertEqual(mix["basis"], self.yesterday)
-        self.assertAlmostEqual(sum(mix["shares"].values()), 1.0)
-        self.assertAlmostEqual(mix["shares"]["model-x"], 0.75)
-        today = payload["daily_model"][self.today]
-        self.assertAlmostEqual(today["model-x"]["cost"], 0.3 * mix["shares"]["model-x"])
-
-    def test_hourly_chart_uses_the_mix_when_available(self):
+    def test_hourly_chart_is_single_colour_and_keeps_dashed_hatching(self):
         html = (APP_DIR / "static" / "index.html").read_text()
-        self.assertIn("model_mix", html)
+        hourly = html.split("function renderHourly(", 1)[1].split("function renderHourlyKey(", 1)[0]
+        self.assertNotIn("model_mix", hourly)
+        self.assertIn("stroke-dasharray=\"4 3\"", hourly)
+        self.assertIn("hourly_no_model", hourly)
 
     def test_browser_refreshes_cached_data_so_the_bar_grows_during_the_day(self):
         html = (APP_DIR / "static" / "index.html").read_text()
@@ -92,10 +84,17 @@ class CurrentDayChartTests(unittest.TestCase):
         html = (APP_DIR / "static" / "index.html").read_text()
         self.assertIn("if(i%stepX===0 || i===days.length-1)", html)
 
-    def test_estimated_segments_are_visually_distinguished(self):
+    def test_daily_chart_keeps_current_total_out_of_other_bucket(self):
         html = (APP_DIR / "static" / "index.html").read_text()
-        self.assertIn("v.est", html)
-        self.assertIn("today_est", html)
+        top5 = html.split("function top5PlusOther(", 1)[1].split("function axisTicks(", 1)[0]
+        self.assertIn("__today_hourly__", top5)
+        self.assertIn("required", top5)
+
+    def test_hourly_total_stays_hatched_without_fake_model_rows(self):
+        html = (APP_DIR / "static" / "index.html").read_text()
+        self.assertNotIn("v.est", html)
+        self.assertIn("today_hourly_note", html)
+        self.assertIn("stroke-dasharray=\"4 3\"", html)
 
     def test_hourly_current_day_replaces_partial_api_day_without_double_counting(self):
         self.write_history({
@@ -103,8 +102,8 @@ class CurrentDayChartTests(unittest.TestCase):
             self.today: {"model-x": {"cost": 0.12, "tokens": 3, "requests": 1}},
         })
         payload = app.build_payload()
-        self.assertEqual(list(payload["daily_model"][self.today]), ["model-x"])
-        self.assertAlmostEqual(payload["daily_model"][self.today]["model-x"]["cost"], 0.3)
+        self.assertEqual(list(payload["daily_model"][self.today]), ["__today_hourly__"])
+        self.assertAlmostEqual(payload["daily_model"][self.today]["__today_hourly__"]["cost"], 0.3)
         self.assertAlmostEqual(payload["monthly"][-1]["cost"], 1.05)
 
 

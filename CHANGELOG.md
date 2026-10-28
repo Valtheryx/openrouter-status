@@ -1,8 +1,18 @@
 # Changelog
 
+## 1.1.3 – 2026-10-28
+
+### Changed
+
+- Removed model attribution estimates from both daily and 24-hour model views. The
+  current day and each hour now display only the sampled cumulative spend as one
+  blue bar/segment; no historical model mix is applied. The provisional hatching
+  remains to identify sampler-based totals, and the legend says that model attribution
+  is unavailable from the hourly API.
+
 ## 1.1.2 – 2026-10-28
 
-### Added
+### Added (superseded by 1.1.3)
 
 - The 24-hour model chart now splits every hour by model instead of showing one
   unallocated total. OpenRouter's activity API is day-granular even with
